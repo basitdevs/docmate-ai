@@ -154,7 +154,7 @@ export default function DocMate() {
 
   const transcribeAudio = async (audioData: Blob | File) => {
     try {
-      updateStatus("Transcribing with Groq Whisper AI...");
+      updateStatus("Transcribing with AI...");
 
       const formData = new FormData();
       if (audioData instanceof File) {
@@ -178,11 +178,10 @@ export default function DocMate() {
       setTranscript(result.transcript);
       setConfidence(result.confidence);
       setRecordingState("complete");
-      updateStatus(
-        `Transcription complete with Groq Whisper! Confidence: ${Math.round(
-          (result.confidence || 0) * 100
-        )}%`
-      );
+      updateStatus(`Transcription complete `);
+      // with! Confidence: ${Math.round(
+      //   (result.confidence || 0) * 100
+      // )}%
     } catch (error) {
       console.error("Transcription error:", error);
       setRecordingState("idle");
@@ -373,24 +372,14 @@ ${transcript}`;
               DocMate Pro
             </h1>
             <p className='text-base sm:text-lg lg:text-xl text-slate-300 max-w-3xl mx-auto leading-relaxed px-2'>
-              Professional AI-powered medical conversation transcription with Groq Whisper and
-              intelligent clinical notes generation in SOAP format
+              Professional AI-powered medical conversation transcription and intelligent clinical
+              notes generation in SOAP format
             </p>
           </div>
 
           <Card className='mb-6 sm:mb-8 bg-slate-800/50 border-slate-700 backdrop-blur-sm'>
             <CardContent className='p-4 sm:p-6 lg:p-8'>
               <div className='text-center space-y-4 sm:space-y-6'>
-                {/* <div className="max-w-2xl mx-auto">
-                  <h3 className="text-base sm:text-lg font-semibold text-slate-300 mb-3 sm:mb-4">
-                    Groq Whisper AI Transcription
-                  </h3>
-                  <div className="p-3 sm:p-4 bg-blue-900/20 rounded-lg border border-blue-700/30">
-                    <div className="text-sm font-semibold text-blue-300">Groq Whisper Large v3</div>
-                    <div className="text-xs text-blue-400">High-accuracy medical transcription</div>
-                  </div>
-                </div> */}
-
                 <div className='flex justify-center'>
                   <div
                     className={`rounded-full p-6 sm:p-8 transition-all duration-300 ${
@@ -493,9 +482,9 @@ ${transcript}`;
                 <CardTitle className='text-lg sm:text-xl lg:text-2xl text-blue-400 flex items-center gap-2 sm:gap-3'>
                   <Mic className='w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7' />
                   <span className='flex-1'>Medical Conversation Transcript</span>
-                  <span className='text-xs bg-blue-600/20 text-blue-300 px-2 py-1 rounded-full'>
+                  {/* <span className='text-xs bg-blue-600/20 text-blue-300 px-2 py-1 rounded-full'>
                     Groq Whisper
-                  </span>
+                  </span> */}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -576,7 +565,7 @@ ${transcript}`;
                     <li>Click "Start Recording" and allow microphone access</li>
                     <li>Conduct medical conversation clearly and at normal pace</li>
                     <li>Click "Stop Recording" when consultation is complete</li>
-                    <li>Wait for Groq Whisper AI processing</li>
+                    <li>Wait for AI processing</li>
                   </ol>
                 </div>
                 <div>
@@ -584,7 +573,7 @@ ${transcript}`;
                   <ol className='list-decimal list-inside space-y-1 sm:space-y-2 text-slate-400 text-xs sm:text-sm'>
                     <li>Click "Upload Audio File" button</li>
                     <li>Select MP3, WAV, M4A, WebM, or MP4 file (max 25MB)</li>
-                    <li>Wait for automatic processing with Groq Whisper</li>
+                    <li>Wait for automatic processing with AI</li>
                     <li>Review transcript accuracy before generating notes</li>
                     <li>Supported formats optimized for mobile uploads</li>
                   </ol>
