@@ -38,17 +38,22 @@ export default function DocMate() {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // Check file type
-    const allowedTypes = ["audio/mp3", "audio/mpeg", "audio/wav", "audio/m4a", "audio/webm"];
+    const allowedTypes = [
+      "audio/mp3",
+      "audio/mpeg",
+      "audio/wav",
+      "audio/m4a",
+      "audio/webm",
+      "audio/mp4",
+    ];
     if (
       !allowedTypes.includes(file.type) &&
-      !file.name.toLowerCase().match(/\.(mp3|wav|m4a|webm)$/)
+      !file.name.toLowerCase().match(/\.(mp3|wav|m4a|webm|mp4)$/)
     ) {
-      updateStatus("Please upload a valid audio file (MP3, WAV, M4A, or WebM)", true);
+      updateStatus("Please upload a valid audio file (MP3, WAV, M4A, WebM, or MP4)", true);
       return;
     }
 
-    // Check file size (max 25MB)
     if (file.size > 25 * 1024 * 1024) {
       updateStatus("File size must be less than 25MB", true);
       return;
@@ -59,13 +64,12 @@ export default function DocMate() {
     updateStatus(`Processing uploaded file: ${file.name}...`);
 
     try {
-      await transcribeWithGroqWhisper(file);
+      await transcribeAudio(file);
     } catch (error) {
       console.error("File upload error:", error);
       updateStatus("Failed to process uploaded file. Please try again.", true);
     } finally {
       setIsUploadingFile(false);
-      // Reset file input
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
@@ -112,7 +116,7 @@ export default function DocMate() {
 
         const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
 
-        await transcribeWithGroqWhisper(audioBlob);
+        await transcribeAudio(audioBlob);
       };
 
       mediaRecorderRef.current.onerror = (event) => {
@@ -121,7 +125,7 @@ export default function DocMate() {
         stopRecording();
       };
 
-      mediaRecorderRef.current.start(1000); // Collect data every second
+      mediaRecorderRef.current.start(1000);
       setRecordingState("recording");
       updateStatus("Recording in progress... Speak clearly into your microphone");
     } catch (error) {
@@ -148,12 +152,11 @@ export default function DocMate() {
     }
   }, [recordingState, updateStatus]);
 
-  const transcribeWithGroqWhisper = async (audioData: Blob | File) => {
+  const transcribeAudio = async (audioData: Blob | File) => {
     try {
-      updateStatus("Transcribing with Groq Whisper...");
+      updateStatus("Transcribing with Groq Whisper AI...");
 
       const formData = new FormData();
-      // Handle both recorded audio and uploaded files
       if (audioData instanceof File) {
         formData.append("audio", audioData);
       } else {
@@ -176,21 +179,17 @@ export default function DocMate() {
       setConfidence(result.confidence);
       setRecordingState("complete");
       updateStatus(
-        `Transcription complete! Confidence: ${Math.round((result.confidence || 0) * 100)}%`
+        `Transcription complete with Groq Whisper! Confidence: ${Math.round(
+          (result.confidence || 0) * 100
+        )}%`
       );
     } catch (error) {
       console.error("Transcription error:", error);
       setRecordingState("idle");
-
-      if (error instanceof Error) {
-        if (error.message.includes("Groq API key")) {
-          updateStatus("Groq API key not configured. Please set up your API credentials.", true);
-        } else {
-          updateStatus(`Transcription failed: ${error.message}`, true);
-        }
-      } else {
-        updateStatus("Transcription failed. Please try again.", true);
-      }
+      updateStatus(
+        `Transcription failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+        true
+      );
     }
   };
 
@@ -255,11 +254,7 @@ UNCERTAINTIES:
 
 Medical Conversation Transcript:
 ${transcript}`;
-
-
-    // Transcript confidence level: ${
-    //       confidence ? Math.round(confidence * 100) + "%" : "High (Whisper AI)"
-    //     }
+    // Transcript confidence level: ${confidence ? Math.round(confidence * 100) + "%" : "High (Whisper AI)"}
 
     try {
       const payload = {
@@ -366,29 +361,39 @@ ${transcript}`;
       <input
         ref={fileInputRef}
         type='file'
-        accept='audio/*,.mp3,.wav,.m4a,.webm'
+        accept='audio/*,.mp3,.wav,.m4a,.webm,.mp4'
         onChange={handleFileUpload}
         className='hidden'
       />
 
-      <div className='container mx-auto px-4 py-8'>
+      <div className='container mx-auto px-4 py-4 sm:py-8'>
         <div className='max-w-7xl mx-auto'>
-          <div className='text-center mb-8'>
-            <h1 className='text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-emerald-400 to-blue-400 mb-4'>
+          <div className='text-center mb-6 sm:mb-8'>
+            <h1 className='text-4xl sm:text-5xl lg:text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-emerald-400 to-blue-400 mb-3 sm:mb-4'>
               DocMate Pro
             </h1>
-            <p className='text-xl text-slate-300 max-w-3xl mx-auto leading-relaxed'>
+            <p className='text-base sm:text-lg lg:text-xl text-slate-300 max-w-3xl mx-auto leading-relaxed px-2'>
               Professional AI-powered medical conversation transcription with Groq Whisper and
               intelligent clinical notes generation in SOAP format
             </p>
           </div>
 
-          <Card className='mb-8 bg-slate-800/50 border-slate-700 backdrop-blur-sm'>
-            <CardContent className='p-8'>
-              <div className='text-center space-y-6'>
+          <Card className='mb-6 sm:mb-8 bg-slate-800/50 border-slate-700 backdrop-blur-sm'>
+            <CardContent className='p-4 sm:p-6 lg:p-8'>
+              <div className='text-center space-y-4 sm:space-y-6'>
+                {/* <div className="max-w-2xl mx-auto">
+                  <h3 className="text-base sm:text-lg font-semibold text-slate-300 mb-3 sm:mb-4">
+                    Groq Whisper AI Transcription
+                  </h3>
+                  <div className="p-3 sm:p-4 bg-blue-900/20 rounded-lg border border-blue-700/30">
+                    <div className="text-sm font-semibold text-blue-300">Groq Whisper Large v3</div>
+                    <div className="text-xs text-blue-400">High-accuracy medical transcription</div>
+                  </div>
+                </div> */}
+
                 <div className='flex justify-center'>
                   <div
-                    className={`rounded-full p-8 transition-all duration-300 ${
+                    className={`rounded-full p-6 sm:p-8 transition-all duration-300 ${
                       recordingState === "recording"
                         ? "bg-red-500 animate-pulse shadow-2xl shadow-red-500/50"
                         : recordingState === "processing" || isUploadingFile
@@ -399,41 +404,43 @@ ${transcript}`;
                     }`}
                   >
                     {recordingState === "recording" ? (
-                      <MicOff className='w-16 h-16 text-white' />
+                      <MicOff className='w-12 h-12 sm:w-16 sm:h-16 text-white' />
                     ) : recordingState === "processing" || isUploadingFile ? (
-                      <Loader2 className='w-16 h-16 text-white animate-spin' />
+                      <Loader2 className='w-12 h-12 sm:w-16 sm:h-16 text-white animate-spin' />
                     ) : recordingState === "complete" ? (
-                      <CheckCircle className='w-16 h-16 text-white' />
+                      <CheckCircle className='w-12 h-12 sm:w-16 sm:h-16 text-white' />
                     ) : (
-                      <Mic className='w-16 h-16 text-white' />
+                      <Mic className='w-12 h-12 sm:w-16 sm:h-16 text-white' />
                     )}
                   </div>
                 </div>
 
-                <div className='flex items-center justify-center gap-2 min-h-[2rem]'>
+                <div className='flex items-center justify-center gap-2 min-h-[2rem] px-2'>
                   {getStatusIcon()}
-                  <p className={`text-lg font-medium ${error ? "text-red-400" : "text-slate-300"}`}>
+                  <p
+                    className={`text-sm sm:text-base lg:text-lg font-medium text-center ${
+                      error ? "text-red-400" : "text-slate-300"
+                    }`}
+                  >
                     {status}
                   </p>
                 </div>
 
                 {/* {confidence !== null && (
-                  <div className='bg-slate-900/50 rounded-lg p-3 max-w-md mx-auto'>
-                    <p className='text-sm text-slate-400'>
+                  <div className="bg-slate-900/50 rounded-lg p-3 max-w-md mx-auto">
+                    <p className="text-sm text-slate-400">
                       Transcription Confidence:{" "}
-                      <span className='text-green-400 font-semibold'>
-                        {Math.round(confidence * 100)}%
-                      </span>
+                      <span className="text-green-400 font-semibold">{Math.round(confidence * 100)}%</span>
                     </p>
                   </div>
                 )} */}
 
-                <div className='flex justify-center gap-4 flex-wrap'>
+                <div className='flex flex-col sm:flex-row justify-center gap-3 sm:gap-4'>
                   <button
                     onClick={buttonConfig.onClick}
                     disabled={recordingState === "processing" || isUploadingFile}
                     // size="lg"
-                    className={`px-10 py-4 text-lg cursor-pointer  flex items-center justify-center gap-2 rounded-[8px] font-semibold transition-all duration-200 ${buttonConfig.className}`}
+                    className={`w-full sm:w-auto px-6 flex items-center gap-2 rounded-[10px] sm:px-10 py-3 sm:py-4 text-base sm:text-lg font-semibold transition-all duration-200 ${buttonConfig.className}`}
                   >
                     {buttonConfig.icon}
                     {buttonConfig.text}
@@ -447,7 +454,7 @@ ${transcript}`;
                       isUploadingFile
                     }
                     // size="lg"
-                    className='px-10 py-4 text-lg cursor-pointer flex items-center justify-center gap-2 rounded-[8px] font-semibold bg-purple-600 hover:bg-purple-700 shadow-lg shadow-purple-600/30 transition-all duration-200 disabled:opacity-50'
+                    className='w-full sm:w-auto px-6 flex items-center gap-2 rounded-[10px] sm:px-10 py-3 sm:py-4 text-base sm:text-lg font-semibold bg-purple-600 hover:bg-purple-700 shadow-lg shadow-purple-600/30 transition-all duration-200 disabled:opacity-50'
                   >
                     {isUploadingFile ? (
                       <Loader2 className='w-5 h-5 mr-2 animate-spin' />
@@ -465,8 +472,8 @@ ${transcript}`;
                       recordingState === "processing" ||
                       isUploadingFile
                     }
-                    // size='lg'
-                    className='px-10 py-4 text-lg cursor-pointer flex items-center justify-center gap-2 rounded-[8px] font-semibold bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-600/30 transition-all duration-200 disabled:opacity-50'
+                    // size="lg"
+                    className='w-full sm:w-auto px-6 flex items-center gap-2 rounded-[10px] sm:px-10 py-3 sm:py-4 text-base sm:text-lg font-semibold bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-600/30 transition-all duration-200 disabled:opacity-50'
                   >
                     {isGeneratingNotes ? (
                       <Loader2 className='w-5 h-5 mr-2 animate-spin' />
@@ -480,21 +487,20 @@ ${transcript}`;
             </CardContent>
           </Card>
 
-          <div className='grid lg:grid-cols-2 gap-8'>
-            {/* Transcription Panel */}
+          <div className='grid lg:grid-cols-2 gap-4 sm:gap-6 lg:gap-8'>
             <Card className='bg-slate-800/50 border-slate-700 backdrop-blur-sm'>
-              <CardHeader className='pb-4'>
-                <CardTitle className='text-2xl text-blue-400 flex items-center gap-3'>
-                  <Mic className='w-7 h-7' />
-                  Medical Conversation Transcript
+              <CardHeader className='pb-3 sm:pb-4'>
+                <CardTitle className='text-lg sm:text-xl lg:text-2xl text-blue-400 flex items-center gap-2 sm:gap-3'>
+                  <Mic className='w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7' />
+                  <span className='flex-1'>Medical Conversation Transcript</span>
                   <span className='text-xs bg-blue-600/20 text-blue-300 px-2 py-1 rounded-full'>
-                    Groq Whisper AI
+                    Groq Whisper
                   </span>
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className='bg-slate-900/50 rounded-lg p-6 min-h-[500px] max-h-[700px] overflow-y-auto border border-slate-700/50'>
-                  <pre className='whitespace-pre-wrap text-sm font-mono text-slate-200 leading-relaxed'>
+                <div className='bg-slate-900/50 rounded-lg p-3 sm:p-4 lg:p-6 min-h-[300px] sm:min-h-[400px] lg:min-h-[500px] max-h-[500px] sm:max-h-[600px] lg:max-h-[700px] overflow-y-auto border border-slate-700/50'>
+                  <pre className='whitespace-pre-wrap text-xs sm:text-sm font-mono text-slate-200 leading-relaxed'>
                     {transcript ||
                       "Medical conversation transcript will appear here after recording and processing..."}
                   </pre>
@@ -502,25 +508,23 @@ ${transcript}`;
               </CardContent>
             </Card>
 
-            {/* Clinical Notes Panel */}
             <Card className='bg-slate-800/50 border-slate-700 backdrop-blur-sm'>
-              <CardHeader className='pb-4'>
-                <CardTitle className='text-2xl text-emerald-400 flex items-center gap-3'>
-                  <FileText className='w-7 h-7' />
-                  Clinical Notes (SOAP Format)
+              <CardHeader className='pb-3 sm:pb-4'>
+                <CardTitle className='text-lg sm:text-xl lg:text-2xl text-emerald-400 flex items-center gap-2 sm:gap-3'>
+                  <FileText className='w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7' />
+                  <span className='flex-1'>Clinical Notes (SOAP Format)</span>
                   <span className='text-xs bg-emerald-600/20 text-emerald-300 px-2 py-1 rounded-full'>
                     AI Generated
                   </span>
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className='bg-slate-900/50 rounded-lg p-6 min-h-[500px] max-h-[700px] overflow-y-auto border border-slate-700/50'>
+                <div className='bg-slate-900/50 rounded-lg p-3 sm:p-4 lg:p-6 min-h-[300px] sm:min-h-[400px] lg:min-h-[500px] max-h-[500px] sm:max-h-[600px] lg:max-h-[700px] overflow-y-auto border border-slate-700/50'>
                   {notes ? (
-                    <div className='text-sm text-slate-200 leading-relaxed space-y-4'>
+                    <div className='text-xs sm:text-sm text-slate-200 leading-relaxed space-y-3 sm:space-y-4'>
                       {notes.split("\n").map((line, index) => {
                         const trimmedLine = line.trim();
 
-                        // Handle section headers
                         if (
                           trimmedLine.match(
                             /^(ORIGINAL LANGUAGE|TRANSLATED TRANSCRIPT|SOAP NOTES|SUBJECTIVE|OBJECTIVE|ASSESSMENT|PLAN|CONSULTATION PATTERN SUMMARY|UNCERTAINTIES):/
@@ -529,19 +533,17 @@ ${transcript}`;
                           return (
                             <div
                               key={index}
-                              className='font-bold text-emerald-300 text-base mt-6 mb-2 border-b border-slate-600 pb-1'
+                              className='font-bold text-emerald-300 text-sm sm:text-base mt-4 sm:mt-6 mb-2 border-b border-slate-600 pb-1'
                             >
                               {trimmedLine}
                             </div>
                           );
                         }
 
-                        // Handle empty lines
                         if (!trimmedLine) {
                           return <div key={index} className='h-2'></div>;
                         }
 
-                        // Handle regular content
                         return (
                           <div key={index} className='text-slate-200 ml-2'>
                             {trimmedLine}
@@ -550,7 +552,7 @@ ${transcript}`;
                       })}
                     </div>
                   ) : (
-                    <div className='text-slate-400 italic text-center py-20'>
+                    <div className='text-slate-400 italic text-center py-12 sm:py-16 lg:py-20 px-4'>
                       Professional clinical notes in SOAP format will be generated here from your
                       transcript...
                     </div>
@@ -560,16 +562,16 @@ ${transcript}`;
             </Card>
           </div>
 
-          <Card className='mt-8 bg-slate-800/30 border-slate-700 backdrop-blur-sm'>
-            <CardContent className='p-8'>
-              <h3 className='text-xl font-semibold text-slate-300 mb-4 flex items-center gap-2'>
-                <Upload className='w-6 h-6' />
+          <Card className='mt-6 sm:mt-8 bg-slate-800/30 border-slate-700 backdrop-blur-sm'>
+            <CardContent className='p-4 sm:p-6 lg:p-8'>
+              <h3 className='text-lg sm:text-xl font-semibold text-slate-300 mb-3 sm:mb-4 flex items-center gap-2'>
+                <Upload className='w-5 h-5 sm:w-6 sm:h-6' />
                 Usage Instructions
               </h3>
-              <div className='grid md:grid-cols-3 gap-6'>
+              <div className='grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6'>
                 <div>
                   <h4 className='font-semibold text-slate-400 mb-2'>Live Recording:</h4>
-                  <ol className='list-decimal list-inside space-y-2 text-slate-400 text-sm'>
+                  <ol className='list-decimal list-inside space-y-1 sm:space-y-2 text-slate-400 text-xs sm:text-sm'>
                     <li>Ensure quiet environment with quality microphone</li>
                     <li>Click "Start Recording" and allow microphone access</li>
                     <li>Conduct medical conversation clearly and at normal pace</li>
@@ -579,17 +581,17 @@ ${transcript}`;
                 </div>
                 <div>
                   <h4 className='font-semibold text-slate-400 mb-2'>File Upload:</h4>
-                  <ol className='list-decimal list-inside space-y-2 text-slate-400 text-sm'>
+                  <ol className='list-decimal list-inside space-y-1 sm:space-y-2 text-slate-400 text-xs sm:text-sm'>
                     <li>Click "Upload Audio File" button</li>
-                    <li>Select MP3, WAV, M4A, or WebM file (max 25MB)</li>
+                    <li>Select MP3, WAV, M4A, WebM, or MP4 file (max 25MB)</li>
                     <li>Wait for automatic processing with Groq Whisper</li>
                     <li>Review transcript accuracy before generating notes</li>
-                    <li>Supported formats: MP3, WAV, M4A, WebM</li>
+                    <li>Supported formats optimized for mobile uploads</li>
                   </ol>
                 </div>
-                <div>
+                <div className='sm:col-span-2 lg:col-span-1'>
                   <h4 className='font-semibold text-slate-400 mb-2'>Clinical Notes Generation:</h4>
-                  <ol className='list-decimal list-inside space-y-2 text-slate-400 text-sm'>
+                  <ol className='list-decimal list-inside space-y-1 sm:space-y-2 text-slate-400 text-xs sm:text-sm'>
                     <li>Verify transcript completeness and accuracy</li>
                     <li>Click "Generate Clinical Notes" for SOAP format</li>
                     <li>Review AI-generated notes for medical accuracy</li>
@@ -599,24 +601,29 @@ ${transcript}`;
                 </div>
               </div>
 
-              <div className='mt-6 grid md:grid-cols-3 gap-4'>
-                <div className='p-4 bg-blue-900/20 rounded-lg border border-blue-700/30'>
-                  <h5 className='font-semibold text-blue-300 mb-2'>Live Recording</h5>
-                  <p className='text-sm text-blue-200'>
+              <div className='mt-4 sm:mt-6 grid sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4'>
+                <div className='p-3 sm:p-4 bg-blue-900/20 rounded-lg border border-blue-700/30'>
+                  <h5 className='font-semibold text-blue-300 mb-2 text-sm sm:text-base'>
+                    Live Recording
+                  </h5>
+                  <p className='text-xs sm:text-sm text-blue-200'>
                     Real-time recording with browser microphone access for immediate consultation
                     transcription.
                   </p>
                 </div>
-                <div className='p-4 bg-purple-900/20 rounded-lg border border-purple-700/30'>
-                  <h5 className='font-semibold text-purple-300 mb-2'>File Upload</h5>
-                  <p className='text-sm text-purple-200'>
-                    Upload pre-recorded audio files (MP3, WAV, M4A, WebM) up to 25MB for
-                    transcription processing.
+                <div className='p-3 sm:p-4 bg-purple-900/20 rounded-lg border border-purple-700/30'>
+                  <h5 className='font-semibold text-purple-300 mb-2 text-sm sm:text-base'>
+                    File Upload
+                  </h5>
+                  <p className='text-xs sm:text-sm text-purple-200'>
+                    Upload pre-recorded audio files with mobile-optimized processing up to 25MB.
                   </p>
                 </div>
-                <div className='p-4 bg-emerald-900/20 rounded-lg border border-emerald-700/30'>
-                  <h5 className='font-semibold text-emerald-300 mb-2'>SOAP Format Notes</h5>
-                  <p className='text-sm text-emerald-200'>
+                <div className='sm:col-span-2 lg:col-span-1 p-3 sm:p-4 bg-emerald-900/20 rounded-lg border border-emerald-700/30'>
+                  <h5 className='font-semibold text-emerald-300 mb-2 text-sm sm:text-base'>
+                    SOAP Format Notes
+                  </h5>
+                  <p className='text-xs sm:text-sm text-emerald-200'>
                     Automatically generates professional clinical documentation in standard SOAP
                     format with medical terminology.
                   </p>
