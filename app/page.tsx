@@ -1,103 +1,455 @@
-import Image from "next/image";
+"use client"
 
-export default function Home() {
+import { useState, useRef, useCallback } from "react"
+// import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Mic, MicOff, FileText, Loader2, AlertCircle, CheckCircle, Upload } from "lucide-react"
+import type { TranscriptionResponse } from "@/types/speech"
+
+type RecordingState = "idle" | "recording" | "processing" | "complete"
+
+export default function DocMate() {
+  const [recordingState, setRecordingState] = useState<RecordingState>("idle")
+  const [transcript, setTranscript] = useState("")
+  const [notes, setNotes] = useState("")
+  const [status, setStatus] = useState("Ready to record medical conversation")
+  const [isGeneratingNotes, setIsGeneratingNotes] = useState(false)
+  const [confidence, setConfidence] = useState<number | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const audioChunksRef = useRef<Blob[]>([])
+  const streamRef = useRef<MediaStream | null>(null)
+
+  const updateStatus = useCallback((message: string, isError = false) => {
+    setStatus(message)
+    if (isError) {
+      setError(message)
+    } else {
+      setError(null)
+    }
+  }, [])
+
+  const startRecording = async () => {
+    try {
+      setError(null)
+      updateStatus("Requesting microphone access...")
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          sampleRate: 48000,
+        },
+      })
+
+      streamRef.current = stream
+      audioChunksRef.current = []
+
+      const options = { mimeType: "audio/webm;codecs=opus" }
+      if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+        options.mimeType = "audio/webm"
+      }
+
+      mediaRecorderRef.current = new MediaRecorder(stream, options)
+
+      mediaRecorderRef.current.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data)
+        }
+      }
+
+      mediaRecorderRef.current.onstop = async () => {
+        setRecordingState("processing")
+        updateStatus("Processing audio recording...")
+
+        const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" })
+
+        await transcribeWithGroqWhisper(audioBlob)
+      }
+
+      mediaRecorderRef.current.onerror = (event) => {
+        console.error("MediaRecorder error:", event)
+        updateStatus("Recording error occurred. Please try again.", true)
+        stopRecording()
+      }
+
+      mediaRecorderRef.current.start(1000) // Collect data every second
+      setRecordingState("recording")
+      updateStatus("Recording in progress... Speak clearly into your microphone")
+    } catch (error) {
+      console.error("Error starting recording:", error)
+      updateStatus("Could not access microphone. Please check permissions and try again.", true)
+      setRecordingState("idle")
+    }
+  }
+
+  const stopRecording = useCallback(() => {
+    if (mediaRecorderRef.current && recordingState === "recording") {
+      mediaRecorderRef.current.stop()
+    }
+
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => {
+        track.stop()
+      })
+      streamRef.current = null
+    }
+
+    if (recordingState === "recording") {
+      updateStatus("Stopping recording...")
+    }
+  }, [recordingState, updateStatus])
+
+  const transcribeWithGroqWhisper = async (audioBlob: Blob) => {
+    try {
+      updateStatus("Transcribing with Groq Whisper...")
+
+      const formData = new FormData()
+      formData.append("audio", audioBlob, "recording.webm")
+
+      const response = await fetch("/api/transcribe", {
+        method: "POST",
+        body: formData,
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || `HTTP ${response.status}`)
+      }
+
+      const result: TranscriptionResponse = await response.json()
+
+      setTranscript(result.transcript)
+      setConfidence(result.confidence)
+      setRecordingState("complete")
+      updateStatus(`Transcription complete! Confidence: ${Math.round((result.confidence || 0) * 100)}%`)
+    } catch (error) {
+      console.error("Transcription error:", error)
+      setRecordingState("idle")
+
+      if (error instanceof Error) {
+        if (error.message.includes("Groq API key")) {
+          updateStatus("Groq API key not configured. Please set up your API credentials.", true)
+        } else {
+          updateStatus(`Transcription failed: ${error.message}`, true)
+        }
+      } else {
+        updateStatus("Transcription failed. Please try again.", true)
+      }
+    }
+  }
+
+  const generateClinicalNotes = async () => {
+    if (!transcript.trim()) {
+      updateStatus("Please record and transcribe audio first.", true)
+      return
+    }
+
+    const apiKey = process.env.NEXT_PUBLIC_GROQ_API_KEY
+    if (!apiKey) {
+      updateStatus(
+        "Groq API key not configured. Please add NEXT_PUBLIC_GROQ_API_KEY to your environment variables.",
+        true,
+      )
+      return
+    }
+
+    setIsGeneratingNotes(true)
+    setNotes("")
+    updateStatus("Generating clinical notes in SOAP format...")
+
+    const prompt = `Convert this doctor-patient transcript into professional clinical notes in SOAP format (Subjective, Objective, Assessment, Plan).
+
+Requirements:
+- Always output in English
+- Detect and translate if input is in another language, noting the original language
+- Summarize symptoms, history, exam findings, assessment, and plan
+- Leave space for doctor to refine Assessment/Plan sections
+- Include Consultation Pattern Summary if past consultations are mentioned
+- Use concise, clinical, legally compliant tone
+- Flag uncertainties with <uncertain> tags
+- Remove all personal identifying information
+- Format clearly with proper medical terminology
+
+Transcript confidence level: ${confidence ? Math.round(confidence * 100) + "%" : "High (Whisper AI)"}
+
+Medical Conversation Transcript:
+${transcript}`
+
+    try {
+      const payload = {
+        messages: [{ role: "user", content: prompt }],
+        model: "llama3-8b-8192",
+        temperature: 0.2,
+        max_tokens: 4096,
+        top_p: 0.9,
+        stream: true,
+      }
+
+      const response = await fetch("/api/generate-notes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ payload, apiKey }),
+      })
+
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`)
+      }
+
+      if (!response.body) {
+        throw new Error("No response body received")
+      }
+
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder("utf-8")
+      let notesContent = ""
+
+      while (true) {
+        const { value, done } = await reader.read()
+        if (done) break
+
+        const chunk = decoder.decode(value, { stream: true })
+        const lines = chunk.split("\n")
+
+        for (const line of lines) {
+          if (line.startsWith("data: ")) {
+            const data = line.substring(6)
+            if (data === "[DONE]") continue
+
+            try {
+              const json = JSON.parse(data)
+              const content = json.choices[0]?.delta?.content || ""
+              notesContent += content
+              setNotes(notesContent)
+            } catch (e) {
+              console.error("Failed to parse streaming JSON:", e)
+            }
+          }
+        }
+      }
+
+      updateStatus("Clinical notes generated successfully!")
+    } catch (error) {
+      console.error("Error generating clinical notes:", error)
+      updateStatus("Failed to generate clinical notes. Please check your API configuration and try again.", true)
+    } finally {
+      setIsGeneratingNotes(false)
+    }
+  }
+
+  const getStatusIcon = () => {
+    if (error) return <AlertCircle className="w-5 h-5 text-red-400" />
+    if (recordingState === "complete") return <CheckCircle className="w-5 h-5 text-green-400" />
+    if (recordingState === "processing") return <Loader2 className="w-5 h-5 animate-spin text-blue-400" />
+    return null
+  }
+
+  const getRecordingButtonConfig = () => {
+    switch (recordingState) {
+      case "recording":
+        return {
+          onClick: stopRecording,
+          className: "bg-red-600 hover:bg-red-700 shadow-lg shadow-red-600/30",
+          icon: <MicOff className="w-5 h-5 mr-2" />,
+          text: "Stop Recording",
+        }
+      case "processing":
+        return {
+          onClick: () => {},
+          className: "bg-yellow-600 cursor-not-allowed",
+          icon: <Loader2 className="w-5 h-5 mr-2 animate-spin" />,
+          text: "Processing...",
+        }
+      default:
+        return {
+          onClick: startRecording,
+          className: "bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-600/30",
+          icon: <Mic className="w-5 h-5 mr-2" />,
+          text: "Start Recording",
+        }
+    }
+  }
+
+  const buttonConfig = getRecordingButtonConfig()
+
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 text-white">
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-8">
+            <h1 className="text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-emerald-400 to-blue-400 mb-4">
+              DocMate Pro
+            </h1>
+            <p className="text-xl text-slate-300 max-w-3xl mx-auto leading-relaxed">
+              Professional AI-powered medical conversation transcription with Groq Whisper and intelligent clinical
+              notes generation in SOAP format
+            </p>
+          </div>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+          <Card className="mb-8 bg-slate-800/50 border-slate-700 backdrop-blur-sm">
+            <CardContent className="p-8">
+              <div className="text-center space-y-6">
+                <div className="flex justify-center">
+                  <div
+                    className={`rounded-full p-8 transition-all duration-300 ${
+                      recordingState === "recording"
+                        ? "bg-red-500 animate-pulse shadow-2xl shadow-red-500/50"
+                        : recordingState === "processing"
+                          ? "bg-yellow-500 shadow-2xl shadow-yellow-500/50"
+                          : recordingState === "complete"
+                            ? "bg-green-500 shadow-2xl shadow-green-500/50"
+                            : "bg-blue-500 shadow-2xl shadow-blue-600/50"
+                    }`}
+                  >
+                    {recordingState === "recording" ? (
+                      <MicOff className="w-16 h-16 text-white" />
+                    ) : recordingState === "processing" ? (
+                      <Loader2 className="w-16 h-16 text-white animate-spin" />
+                    ) : recordingState === "complete" ? (
+                      <CheckCircle className="w-16 h-16 text-white" />
+                    ) : (
+                      <Mic className="w-16 h-16 text-white" />
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-center gap-2 min-h-[2rem]">
+                  {getStatusIcon()}
+                  <p className={`text-lg font-medium ${error ? "text-red-400" : "text-slate-300"}`}>{status}</p>
+                </div>
+
+                {confidence !== null && (
+                  <div className="bg-slate-900/50 rounded-lg p-3 max-w-md mx-auto">
+                    <p className="text-sm text-slate-400">
+                      Transcription Confidence:{" "}
+                      <span className="text-green-400 font-semibold">{Math.round(confidence * 100)}%</span>
+                    </p>
+                  </div>
+                )}
+
+                <div className="flex justify-center gap-4 flex-wrap">
+                  <button
+                    onClick={buttonConfig.onClick}
+                    disabled={recordingState === "processing"}
+                    // size="lg"
+                    className={`px-10 py-4 flex items-center gap-2 rounded-[8px] text-lg font-semibold transition-all duration-200 ${buttonConfig.className}`}
+                  >
+                    {buttonConfig.icon}
+                    {buttonConfig.text}
+                  </button>
+
+                  <button
+                    onClick={generateClinicalNotes}
+                    disabled={isGeneratingNotes || !transcript.trim() || recordingState === "processing"}
+                    // size="lg"
+                    className="px-10 py-4 text-lg flex items-center gap-2 rounded-[8px] font-semibold bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-600/30 transition-all duration-200 disabled:opacity-50"
+                  >
+                    {isGeneratingNotes ? (
+                      <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                    ) : (
+                      <FileText className="w-5 h-5 mr-2" />
+                    )}
+                    Generate Clinical Notes
+                  </button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="grid lg:grid-cols-2 gap-8">
+            {/* Transcription Panel */}
+            <Card className="bg-slate-800/50 border-slate-700 backdrop-blur-sm">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-2xl text-blue-400 flex items-center gap-3">
+                  <Mic className="w-7 h-7" />
+                  Medical Conversation Transcript
+                  <span className="text-xs bg-blue-600/20 text-blue-300 px-2 py-1 rounded-full">Groq Whisper AI</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="bg-slate-900/50 rounded-lg p-6 min-h-[500px] max-h-[700px] overflow-y-auto border border-slate-700/50">
+                  <pre className="whitespace-pre-wrap text-sm font-mono text-slate-200 leading-relaxed">
+                    {transcript || "Medical conversation transcript will appear here after recording and processing..."}
+                  </pre>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Clinical Notes Panel */}
+            <Card className="bg-slate-800/50 border-slate-700 backdrop-blur-sm">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-2xl text-emerald-400 flex items-center gap-3">
+                  <FileText className="w-7 h-7" />
+                  Clinical Notes (SOAP Format)
+                  <span className="text-xs bg-emerald-600/20 text-emerald-300 px-2 py-1 rounded-full">
+                    AI Generated
+                  </span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="bg-slate-900/50 rounded-lg p-6 min-h-[500px] max-h-[700px] overflow-y-auto border border-slate-700/50">
+                  <pre className="whitespace-pre-wrap text-sm font-mono text-slate-200 leading-relaxed">
+                    {notes ||
+                      "Professional clinical notes in SOAP format will be generated here from your transcript..."}
+                  </pre>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <Card className="mt-8 bg-slate-800/30 border-slate-700 backdrop-blur-sm">
+            <CardContent className="p-8">
+              <h3 className="text-xl font-semibold text-slate-300 mb-4 flex items-center gap-2">
+                <Upload className="w-6 h-6" />
+                Simplified Usage Instructions
+              </h3>
+              <div className="grid md:grid-cols-2 gap-6">
+                <div>
+                  <h4 className="font-semibold text-slate-400 mb-2">Recording Process:</h4>
+                  <ol className="list-decimal list-inside space-y-2 text-slate-400 text-sm">
+                    <li>Ensure quiet environment with quality microphone</li>
+                    <li>Click "Start Recording" and allow microphone access</li>
+                    <li>Conduct medical conversation clearly and at normal pace</li>
+                    <li>Click "Stop Recording" when consultation is complete</li>
+                    <li>Wait for Groq Whisper AI processing (much faster!)</li>
+                    <li>Review transcript accuracy before generating notes</li>
+                  </ol>
+                </div>
+                <div>
+                  <h4 className="font-semibold text-slate-400 mb-2">Clinical Notes Generation:</h4>
+                  <ol className="list-decimal list-inside space-y-2 text-slate-400 text-sm">
+                    <li>Verify transcript completeness and accuracy</li>
+                    <li>Click "Generate Clinical Notes" for SOAP format</li>
+                    <li>Review AI-generated notes for medical accuracy</li>
+                    <li>Edit and refine Assessment/Plan sections as needed</li>
+                    <li>Ensure compliance with medical documentation standards</li>
+                    <li>Save or export notes to your medical records system</li>
+                  </ol>
+                </div>
+              </div>
+
+              <div className="mt-6 grid md:grid-cols-2 gap-4">
+                <div className="p-4 bg-blue-900/20 rounded-lg border border-blue-700/30">
+                  <h5 className="font-semibold text-blue-300 mb-2">Groq Whisper Integration</h5>
+                  <p className="text-sm text-blue-200">
+                    Uses Groq's optimized Whisper AI for fast, accurate speech-to-text conversion. No complex setup
+                    required - just add your Groq API key!
+                  </p>
+                </div>
+                <div className="p-4 bg-emerald-900/20 rounded-lg border border-emerald-700/30">
+                  <h5 className="font-semibold text-emerald-300 mb-2">SOAP Format Notes</h5>
+                  <p className="text-sm text-emerald-200">
+                    Automatically generates professional clinical documentation in standard SOAP format (Subjective,
+                    Objective, Assessment, Plan) with medical terminology.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      </div>
     </div>
-  );
+  )
 }
