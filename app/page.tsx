@@ -124,7 +124,7 @@ export default function DocMate() {
       setTranscript(result.transcript)
       setConfidence(result.confidence)
       setRecordingState("complete")
-      updateStatus(`Transcription complete! Confidence: ${Math.round((result.confidence || 0) * 100)}%`)
+      updateStatus(`Transcription complete! `) // Confidence: ${Math.round((result.confidence || 0) * 100)}%
     } catch (error) {
       console.error("Transcription error:", error)
       setRecordingState("idle")
@@ -173,10 +173,10 @@ Requirements:
 - Remove all personal identifying information
 - Format clearly with proper medical terminology
 
-Transcript confidence level: ${confidence ? Math.round(confidence * 100) + "%" : "High (Whisper AI)"}
 
 Medical Conversation Transcript:
 ${transcript}`
+// Transcript confidence level: ${confidence ? Math.round(confidence * 100) + "%" : "High (Whisper AI)"}
 
     try {
       const payload = {
@@ -320,14 +320,14 @@ ${transcript}`
                   <p className={`text-lg font-medium ${error ? "text-red-400" : "text-slate-300"}`}>{status}</p>
                 </div>
 
-                {confidence !== null && (
+                {/* {confidence !== null && (
                   <div className="bg-slate-900/50 rounded-lg p-3 max-w-md mx-auto">
                     <p className="text-sm text-slate-400">
                       Transcription Confidence:{" "}
                       <span className="text-green-400 font-semibold">{Math.round(confidence * 100)}%</span>
                     </p>
                   </div>
-                )}
+                )} */}
 
                 <div className="flex justify-center gap-4 flex-wrap">
                   <button
