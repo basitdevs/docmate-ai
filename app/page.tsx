@@ -5,7 +5,16 @@ import type React from "react";
 import { useState, useRef, useCallback } from "react";
 // import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Mic, MicOff, FileText, Loader2, AlertCircle, CheckCircle, Upload } from "lucide-react";
+import {
+  Mic,
+  MicOff,
+  FileText,
+  Loader2,
+  AlertCircle,
+  CheckCircle,
+  Upload,
+  Info,
+} from "lucide-react";
 import type { TranscriptionResponse } from "@/types/speech";
 
 type RecordingState = "idle" | "recording" | "processing" | "complete";
@@ -19,6 +28,7 @@ export default function DocMate() {
   const [confidence, setConfidence] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isUploadingFile, setIsUploadingFile] = useState(false);
+  const [showFull, setShowFull] = useState(false);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -357,65 +367,67 @@ ${transcript}`;
 
   return (
     <div className='min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 text-white'>
-      <input
-        ref={fileInputRef}
-        type='file'
-        accept='audio/*,.mp3,.wav,.m4a,.webm,.mp4'
-        onChange={handleFileUpload}
-        className='hidden'
-      />
+      {showFull ? (
+        <>
+          <input
+            ref={fileInputRef}
+            type='file'
+            accept='audio/*,.mp3,.wav,.m4a,.webm,.mp4'
+            onChange={handleFileUpload}
+            className='hidden'
+          />
 
-      <div className='container mx-auto px-4 py-4 sm:py-8'>
-        <div className='max-w-7xl mx-auto'>
-          <div className='text-center mb-6 sm:mb-8'>
-            <h1 className='text-4xl sm:text-5xl lg:text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-emerald-400 to-blue-400 mb-3 sm:mb-4'>
-              DocMate Pro
-            </h1>
-            <p className='text-base sm:text-lg lg:text-xl text-slate-300 max-w-3xl mx-auto leading-relaxed px-2'>
-              Professional AI-powered medical conversation transcription and intelligent clinical
-              notes generation in SOAP format
-            </p>
-          </div>
+          <div className='container mx-auto px-4 py-4 sm:py-8'>
+            <div className='max-w-7xl mx-auto'>
+              <div className='text-center mb-6 sm:mb-8'>
+                <h1 className='text-4xl sm:text-5xl lg:text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-emerald-400 to-blue-400 mb-3 sm:mb-4'>
+                  DocMate Pro
+                </h1>
+                <p className='text-base sm:text-lg lg:text-xl text-slate-300 max-w-3xl mx-auto leading-relaxed px-2'>
+                  Professional AI-powered medical conversation transcription and intelligent
+                  clinical notes generation in SOAP format
+                </p>
+              </div>
 
-          <Card className='mb-6 sm:mb-8 bg-slate-800/50 border-slate-700 backdrop-blur-sm'>
-            <CardContent className='p-4 sm:p-6 lg:p-8'>
-              <div className='text-center space-y-4 sm:space-y-6'>
-                <div className='flex justify-center'>
-                  <div
-                    className={`rounded-full p-6 sm:p-8 transition-all duration-300 ${
-                      recordingState === "recording"
-                        ? "bg-red-500 animate-pulse shadow-2xl shadow-red-500/50"
-                        : recordingState === "processing" || isUploadingFile
-                        ? "bg-yellow-500 shadow-2xl shadow-yellow-500/50"
-                        : recordingState === "complete"
-                        ? "bg-green-500 shadow-2xl shadow-green-500/50"
-                        : "bg-blue-500 shadow-2xl shadow-blue-600/50"
-                    }`}
-                  >
-                    {recordingState === "recording" ? (
-                      <MicOff className='w-12 h-12 sm:w-16 sm:h-16 text-white' />
-                    ) : recordingState === "processing" || isUploadingFile ? (
-                      <Loader2 className='w-12 h-12 sm:w-16 sm:h-16 text-white animate-spin' />
-                    ) : recordingState === "complete" ? (
-                      <CheckCircle className='w-12 h-12 sm:w-16 sm:h-16 text-white' />
-                    ) : (
-                      <Mic className='w-12 h-12 sm:w-16 sm:h-16 text-white' />
-                    )}
-                  </div>
-                </div>
+              <Card className='mb-6 sm:mb-8 bg-slate-800/50 border-slate-700 backdrop-blur-sm'>
+                <CardContent className='p-4 sm:p-6 lg:p-8'>
+                  <div className='text-center space-y-4 sm:space-y-6'>
+                    <div className='flex justify-center'>
+                      <div
+                        className={`rounded-full p-6 sm:p-8 transition-all duration-300 ${
+                          recordingState === "recording"
+                            ? "bg-red-500 animate-pulse shadow-2xl shadow-red-500/50"
+                            : recordingState === "processing" || isUploadingFile
+                            ? "bg-yellow-500 shadow-2xl shadow-yellow-500/50"
+                            : recordingState === "complete"
+                            ? "bg-green-500 shadow-2xl shadow-green-500/50"
+                            : "bg-blue-500 shadow-2xl shadow-blue-600/50"
+                        }`}
+                      >
+                        {recordingState === "recording" ? (
+                          <MicOff className='w-12 h-12 sm:w-16 sm:h-16 text-white' />
+                        ) : recordingState === "processing" || isUploadingFile ? (
+                          <Loader2 className='w-12 h-12 sm:w-16 sm:h-16 text-white animate-spin' />
+                        ) : recordingState === "complete" ? (
+                          <CheckCircle className='w-12 h-12 sm:w-16 sm:h-16 text-white' />
+                        ) : (
+                          <Mic className='w-12 h-12 sm:w-16 sm:h-16 text-white' />
+                        )}
+                      </div>
+                    </div>
 
-                <div className='flex items-center justify-center gap-2 min-h-[2rem] px-2'>
-                  {getStatusIcon()}
-                  <p
-                    className={`text-sm sm:text-base lg:text-lg font-medium text-center ${
-                      error ? "text-red-400" : "text-slate-300"
-                    }`}
-                  >
-                    {status}
-                  </p>
-                </div>
+                    <div className='flex items-center justify-center gap-2 min-h-[2rem] px-2'>
+                      {getStatusIcon()}
+                      <p
+                        className={`text-sm sm:text-base lg:text-lg font-medium text-center ${
+                          error ? "text-red-400" : "text-slate-300"
+                        }`}
+                      >
+                        {status}
+                      </p>
+                    </div>
 
-                {/* {confidence !== null && (
+                    {/* {confidence !== null && (
                   <div className="bg-slate-900/50 rounded-lg p-3 max-w-md mx-auto">
                     <p className="text-sm text-slate-400">
                       Transcription Confidence:{" "}
@@ -424,204 +436,229 @@ ${transcript}`;
                   </div>
                 )} */}
 
-                <div className='flex flex-col sm:flex-row justify-center gap-3 sm:gap-4'>
-                  <button
-                    onClick={buttonConfig.onClick}
-                    disabled={recordingState === "processing" || isUploadingFile}
-                    // size="lg"
-                    className={`w-full sm:w-auto px-6 flex items-center gap-2 rounded-[10px] sm:px-10 py-3 sm:py-4 text-base sm:text-lg font-semibold transition-all duration-200 ${buttonConfig.className}`}
-                  >
-                    {buttonConfig.icon}
-                    {buttonConfig.text}
-                  </button>
+                    <div className='flex flex-col sm:flex-row justify-center gap-3 sm:gap-4'>
+                      <button
+                        onClick={buttonConfig.onClick}
+                        disabled={recordingState === "processing" || isUploadingFile}
+                        // size="lg"
+                        className={`w-full sm:w-auto px-6 flex items-center gap-2 rounded-[10px] sm:px-10 py-3 sm:py-4 text-base sm:text-lg font-semibold transition-all duration-200 ${buttonConfig.className}`}
+                      >
+                        {buttonConfig.icon}
+                        {buttonConfig.text}
+                      </button>
 
-                  <button
-                    onClick={triggerFileUpload}
-                    disabled={
-                      recordingState === "recording" ||
-                      recordingState === "processing" ||
-                      isUploadingFile
-                    }
-                    // size="lg"
-                    className='w-full sm:w-auto px-6 flex items-center gap-2 rounded-[10px] sm:px-10 py-3 sm:py-4 text-base sm:text-lg font-semibold bg-purple-600 hover:bg-purple-700 shadow-lg shadow-purple-600/30 transition-all duration-200 disabled:opacity-50'
-                  >
-                    {isUploadingFile ? (
-                      <Loader2 className='w-5 h-5 mr-2 animate-spin' />
-                    ) : (
-                      <Upload className='w-5 h-5 mr-2' />
-                    )}
-                    Upload Audio File
-                  </button>
+                      <button
+                        onClick={triggerFileUpload}
+                        disabled={
+                          recordingState === "recording" ||
+                          recordingState === "processing" ||
+                          isUploadingFile
+                        }
+                        // size="lg"
+                        className='w-full sm:w-auto px-6 flex items-center gap-2 rounded-[10px] sm:px-10 py-3 sm:py-4 text-base sm:text-lg font-semibold bg-purple-600 hover:bg-purple-700 shadow-lg shadow-purple-600/30 transition-all duration-200 disabled:opacity-50'
+                      >
+                        {isUploadingFile ? (
+                          <Loader2 className='w-5 h-5 mr-2 animate-spin' />
+                        ) : (
+                          <Upload className='w-5 h-5 mr-2' />
+                        )}
+                        Upload Audio File
+                      </button>
 
-                  <button
-                    onClick={generateClinicalNotes}
-                    disabled={
-                      isGeneratingNotes ||
-                      !transcript.trim() ||
-                      recordingState === "processing" ||
-                      isUploadingFile
-                    }
-                    // size="lg"
-                    className='w-full sm:w-auto px-6 flex items-center gap-2 rounded-[10px] sm:px-10 py-3 sm:py-4 text-base sm:text-lg font-semibold bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-600/30 transition-all duration-200 disabled:opacity-50'
-                  >
-                    {isGeneratingNotes ? (
-                      <Loader2 className='w-5 h-5 mr-2 animate-spin' />
-                    ) : (
-                      <FileText className='w-5 h-5 mr-2' />
-                    )}
-                    Generate Clinical Notes
-                  </button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+                      <button
+                        onClick={generateClinicalNotes}
+                        disabled={
+                          isGeneratingNotes ||
+                          !transcript.trim() ||
+                          recordingState === "processing" ||
+                          isUploadingFile
+                        }
+                        // size="lg"
+                        className='w-full sm:w-auto px-6 flex items-center gap-2 rounded-[10px] sm:px-10 py-3 sm:py-4 text-base sm:text-lg font-semibold bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-600/30 transition-all duration-200 disabled:opacity-50'
+                      >
+                        {isGeneratingNotes ? (
+                          <Loader2 className='w-5 h-5 mr-2 animate-spin' />
+                        ) : (
+                          <FileText className='w-5 h-5 mr-2' />
+                        )}
+                        Generate Clinical Notes
+                      </button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
-          <div className='grid lg:grid-cols-2 gap-4 sm:gap-6 lg:gap-8'>
-            <Card className='bg-slate-800/50 border-slate-700 backdrop-blur-sm'>
-              <CardHeader className='pb-3 sm:pb-4'>
-                <CardTitle className='text-lg sm:text-xl lg:text-2xl text-blue-400 flex items-center gap-2 sm:gap-3'>
-                  <Mic className='w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7' />
-                  <span className='flex-1'>Medical Conversation Transcript</span>
-                  {/* <span className='text-xs bg-blue-600/20 text-blue-300 px-2 py-1 rounded-full'>
+              <div className='grid lg:grid-cols-2 gap-4 sm:gap-6 lg:gap-8'>
+                <Card className='bg-slate-800/50 border-slate-700 backdrop-blur-sm'>
+                  <CardHeader className='pb-3 sm:pb-4'>
+                    <CardTitle className='text-lg sm:text-xl lg:text-2xl text-blue-400 flex items-center gap-2 sm:gap-3'>
+                      <Mic className='w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7' />
+                      <span className='flex-1'>Medical Conversation Transcript</span>
+                      {/* <span className='text-xs bg-blue-600/20 text-blue-300 px-2 py-1 rounded-full'>
                     Groq Whisper
                   </span> */}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className='bg-slate-900/50 rounded-lg p-3 sm:p-4 lg:p-6 min-h-[300px] sm:min-h-[400px] lg:min-h-[500px] max-h-[500px] sm:max-h-[600px] lg:max-h-[700px] overflow-y-auto border border-slate-700/50'>
-                  <pre className='whitespace-pre-wrap text-xs sm:text-sm font-mono text-slate-200 leading-relaxed'>
-                    {transcript ||
-                      "Medical conversation transcript will appear here after recording and processing..."}
-                  </pre>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className='bg-slate-800/50 border-slate-700 backdrop-blur-sm'>
-              <CardHeader className='pb-3 sm:pb-4'>
-                <CardTitle className='text-lg sm:text-xl lg:text-2xl text-emerald-400 flex items-center gap-2 sm:gap-3'>
-                  <FileText className='w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7' />
-                  <span className='flex-1'>Clinical Notes (SOAP Format)</span>
-                  <span className='text-xs bg-emerald-600/20 text-emerald-300 px-2 py-1 rounded-full'>
-                    AI Generated
-                  </span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className='bg-slate-900/50 rounded-lg p-3 sm:p-4 lg:p-6 min-h-[300px] sm:min-h-[400px] lg:min-h-[500px] max-h-[500px] sm:max-h-[600px] lg:max-h-[700px] overflow-y-auto border border-slate-700/50'>
-                  {notes ? (
-                    <div className='text-xs sm:text-sm text-slate-200 leading-relaxed space-y-3 sm:space-y-4'>
-                      {notes.split("\n").map((line, index) => {
-                        const trimmedLine = line.trim();
-
-                        if (
-                          trimmedLine.match(
-                            /^(ORIGINAL LANGUAGE|TRANSLATED TRANSCRIPT|SOAP NOTES|SUBJECTIVE|OBJECTIVE|ASSESSMENT|PLAN|CONSULTATION PATTERN SUMMARY|UNCERTAINTIES):/
-                          )
-                        ) {
-                          return (
-                            <div
-                              key={index}
-                              className='font-bold text-emerald-300 text-sm sm:text-base mt-4 sm:mt-6 mb-2 border-b border-slate-600 pb-1'
-                            >
-                              {trimmedLine}
-                            </div>
-                          );
-                        }
-
-                        if (!trimmedLine) {
-                          return <div key={index} className='h-2'></div>;
-                        }
-
-                        return (
-                          <div key={index} className='text-slate-200 ml-2'>
-                            {trimmedLine}
-                          </div>
-                        );
-                      })}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className='bg-slate-900/50 rounded-lg p-3 sm:p-4 lg:p-6 min-h-[300px] sm:min-h-[400px] lg:min-h-[500px] max-h-[500px] sm:max-h-[600px] lg:max-h-[700px] overflow-y-auto border border-slate-700/50'>
+                      <pre className='whitespace-pre-wrap text-xs sm:text-sm font-mono text-slate-200 leading-relaxed'>
+                        {transcript ||
+                          "Medical conversation transcript will appear here after recording and processing..."}
+                      </pre>
                     </div>
-                  ) : (
-                    <div className='text-slate-400 italic text-center py-12 sm:py-16 lg:py-20 px-4'>
-                      Professional clinical notes in SOAP format will be generated here from your
-                      transcript...
+                  </CardContent>
+                </Card>
+
+                <Card className='bg-slate-800/50 border-slate-700 backdrop-blur-sm'>
+                  <CardHeader className='pb-3 sm:pb-4'>
+                    <CardTitle className='text-lg sm:text-xl lg:text-2xl text-emerald-400 flex items-center gap-2 sm:gap-3'>
+                      <FileText className='w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7' />
+                      <span className='flex-1'>Clinical Notes (SOAP Format)</span>
+                      <span className='text-xs bg-emerald-600/20 text-emerald-300 px-2 py-1 rounded-full'>
+                        AI Generated
+                      </span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className='bg-slate-900/50 rounded-lg p-3 sm:p-4 lg:p-6 min-h-[300px] sm:min-h-[400px] lg:min-h-[500px] max-h-[500px] sm:max-h-[600px] lg:max-h-[700px] overflow-y-auto border border-slate-700/50'>
+                      {notes ? (
+                        <div className='text-xs sm:text-sm text-slate-200 leading-relaxed space-y-3 sm:space-y-4'>
+                          {notes.split("\n").map((line, index) => {
+                            const trimmedLine = line.trim();
+
+                            if (
+                              trimmedLine.match(
+                                /^(ORIGINAL LANGUAGE|TRANSLATED TRANSCRIPT|SOAP NOTES|SUBJECTIVE|OBJECTIVE|ASSESSMENT|PLAN|CONSULTATION PATTERN SUMMARY|UNCERTAINTIES):/
+                              )
+                            ) {
+                              return (
+                                <div
+                                  key={index}
+                                  className='font-bold text-emerald-300 text-sm sm:text-base mt-4 sm:mt-6 mb-2 border-b border-slate-600 pb-1'
+                                >
+                                  {trimmedLine}
+                                </div>
+                              );
+                            }
+
+                            if (!trimmedLine) {
+                              return <div key={index} className='h-2'></div>;
+                            }
+
+                            return (
+                              <div key={index} className='text-slate-200 ml-2'>
+                                {trimmedLine}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className='text-slate-400 italic text-center py-12 sm:py-16 lg:py-20 px-4'>
+                          Professional clinical notes in SOAP format will be generated here from
+                          your transcript...
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <Card className='mt-6 sm:mt-8 bg-slate-800/30 border-slate-700 backdrop-blur-sm'>
+                <CardContent className='p-4 sm:p-6 lg:p-8'>
+                  <h3 className='text-lg sm:text-xl font-semibold text-slate-300 mb-3 sm:mb-4 flex items-center gap-2'>
+                    <Upload className='w-5 h-5 sm:w-6 sm:h-6' />
+                    Usage Instructions
+                  </h3>
+                  <div className='grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6'>
+                    <div>
+                      <h4 className='font-semibold text-slate-400 mb-2'>Live Recording:</h4>
+                      <ol className='list-decimal list-inside space-y-1 sm:space-y-2 text-slate-400 text-xs sm:text-sm'>
+                        <li>Ensure quiet environment with quality microphone</li>
+                        <li>Click "Start Recording" and allow microphone access</li>
+                        <li>Conduct medical conversation clearly and at normal pace</li>
+                        <li>Click "Stop Recording" when consultation is complete</li>
+                        <li>Wait for AI processing</li>
+                      </ol>
+                    </div>
+                    <div>
+                      <h4 className='font-semibold text-slate-400 mb-2'>File Upload:</h4>
+                      <ol className='list-decimal list-inside space-y-1 sm:space-y-2 text-slate-400 text-xs sm:text-sm'>
+                        <li>Click "Upload Audio File" button</li>
+                        <li>Select MP3, WAV, M4A, WebM, or MP4 file (max 25MB)</li>
+                        <li>Wait for automatic processing with AI</li>
+                        <li>Review transcript accuracy before generating notes</li>
+                        <li>Supported formats optimized for mobile uploads</li>
+                      </ol>
+                    </div>
+                    <div className='sm:col-span-2 lg:col-span-1'>
+                      <h4 className='font-semibold text-slate-400 mb-2'>
+                        Clinical Notes Generation:
+                      </h4>
+                      <ol className='list-decimal list-inside space-y-1 sm:space-y-2 text-slate-400 text-xs sm:text-sm'>
+                        <li>Verify transcript completeness and accuracy</li>
+                        <li>Click "Generate Clinical Notes" for SOAP format</li>
+                        <li>Review AI-generated notes for medical accuracy</li>
+                        <li>Edit and refine Assessment/Plan sections as needed</li>
+                        <li>Save or export notes to your medical records system</li>
+                      </ol>
+                    </div>
+                  </div>
+
+                  <div className='mt-4 sm:mt-6 grid sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4'>
+                    <div className='p-3 sm:p-4 bg-blue-900/20 rounded-lg border border-blue-700/30'>
+                      <h5 className='font-semibold text-blue-300 mb-2 text-sm sm:text-base'>
+                        Live Recording
+                      </h5>
+                      <p className='text-xs sm:text-sm text-blue-200'>
+                        Real-time recording with browser microphone access for immediate
+                        consultation transcription.
+                      </p>
+                    </div>
+                    <div className='p-3 sm:p-4 bg-purple-900/20 rounded-lg border border-purple-700/30'>
+                      <h5 className='font-semibold text-purple-300 mb-2 text-sm sm:text-base'>
+                        File Upload
+                      </h5>
+                      <p className='text-xs sm:text-sm text-purple-200'>
+                        Upload pre-recorded audio files with mobile-optimized processing up to 25MB.
+                      </p>
+                    </div>
+                    <div className='sm:col-span-2 lg:col-span-1 p-3 sm:p-4 bg-emerald-900/20 rounded-lg border border-emerald-700/30'>
+                      <h5 className='font-semibold text-emerald-300 mb-2 text-sm sm:text-base'>
+                        SOAP Format Notes
+                      </h5>
+                      <p className='text-xs sm:text-sm text-emerald-200'>
+                        Automatically generates professional clinical documentation in standard SOAP
+                        format with medical terminology.
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </div>
+        </>
+      ) : (
+        <>
+          <div className='flex flex-col items-center justify-center min-h-screen  text-white px-6 text-center'>
+            {/* Icon + Title */}
+            <div className='flex items-center gap-3 mb-4'>
+              <h1 className='text-3xl md:text-5xl font-bold'>Docmate Demo</h1>
+            </div>
 
-          <Card className='mt-6 sm:mt-8 bg-slate-800/30 border-slate-700 backdrop-blur-sm'>
-            <CardContent className='p-4 sm:p-6 lg:p-8'>
-              <h3 className='text-lg sm:text-xl font-semibold text-slate-300 mb-3 sm:mb-4 flex items-center gap-2'>
-                <Upload className='w-5 h-5 sm:w-6 sm:h-6' />
-                Usage Instructions
-              </h3>
-              <div className='grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6'>
-                <div>
-                  <h4 className='font-semibold text-slate-400 mb-2'>Live Recording:</h4>
-                  <ol className='list-decimal list-inside space-y-1 sm:space-y-2 text-slate-400 text-xs sm:text-sm'>
-                    <li>Ensure quiet environment with quality microphone</li>
-                    <li>Click "Start Recording" and allow microphone access</li>
-                    <li>Conduct medical conversation clearly and at normal pace</li>
-                    <li>Click "Stop Recording" when consultation is complete</li>
-                    <li>Wait for AI processing</li>
-                  </ol>
-                </div>
-                <div>
-                  <h4 className='font-semibold text-slate-400 mb-2'>File Upload:</h4>
-                  <ol className='list-decimal list-inside space-y-1 sm:space-y-2 text-slate-400 text-xs sm:text-sm'>
-                    <li>Click "Upload Audio File" button</li>
-                    <li>Select MP3, WAV, M4A, WebM, or MP4 file (max 25MB)</li>
-                    <li>Wait for automatic processing with AI</li>
-                    <li>Review transcript accuracy before generating notes</li>
-                    <li>Supported formats optimized for mobile uploads</li>
-                  </ol>
-                </div>
-                <div className='sm:col-span-2 lg:col-span-1'>
-                  <h4 className='font-semibold text-slate-400 mb-2'>Clinical Notes Generation:</h4>
-                  <ol className='list-decimal list-inside space-y-1 sm:space-y-2 text-slate-400 text-xs sm:text-sm'>
-                    <li>Verify transcript completeness and accuracy</li>
-                    <li>Click "Generate Clinical Notes" for SOAP format</li>
-                    <li>Review AI-generated notes for medical accuracy</li>
-                    <li>Edit and refine Assessment/Plan sections as needed</li>
-                    <li>Save or export notes to your medical records system</li>
-                  </ol>
-                </div>
-              </div>
+            {/* Subtitle */}
+            <p className='text-lg md:text-xl text-gray-300 max-w-xl leading-relaxed'>
+              This was the <span className='font-semibold text-white'>Docmate demo</span>.
+              <br className='hidden md:block' /> More info coming soon...
+            </p>
 
-              <div className='mt-4 sm:mt-6 grid sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4'>
-                <div className='p-3 sm:p-4 bg-blue-900/20 rounded-lg border border-blue-700/30'>
-                  <h5 className='font-semibold text-blue-300 mb-2 text-sm sm:text-base'>
-                    Live Recording
-                  </h5>
-                  <p className='text-xs sm:text-sm text-blue-200'>
-                    Real-time recording with browser microphone access for immediate consultation
-                    transcription.
-                  </p>
-                </div>
-                <div className='p-3 sm:p-4 bg-purple-900/20 rounded-lg border border-purple-700/30'>
-                  <h5 className='font-semibold text-purple-300 mb-2 text-sm sm:text-base'>
-                    File Upload
-                  </h5>
-                  <p className='text-xs sm:text-sm text-purple-200'>
-                    Upload pre-recorded audio files with mobile-optimized processing up to 25MB.
-                  </p>
-                </div>
-                <div className='sm:col-span-2 lg:col-span-1 p-3 sm:p-4 bg-emerald-900/20 rounded-lg border border-emerald-700/30'>
-                  <h5 className='font-semibold text-emerald-300 mb-2 text-sm sm:text-base'>
-                    SOAP Format Notes
-                  </h5>
-                  <p className='text-xs sm:text-sm text-emerald-200'>
-                    Automatically generates professional clinical documentation in standard SOAP
-                    format with medical terminology.
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+            {/* Footer Info */}
+            <div className='flex items-center gap-2 mt-6 text-gray-400'>
+              <Info className='w-5 h-5' />
+              <span className='text-sm md:text-base'>Stay tuned for updates</span>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
