@@ -28,7 +28,7 @@ export default function DocMate() {
   const [confidence, setConfidence] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isUploadingFile, setIsUploadingFile] = useState(false);
-  const [showFull, setShowFull] = useState(false);
+  const [showFull, setShowFull] = useState(true);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
