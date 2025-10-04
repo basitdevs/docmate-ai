@@ -13,6 +13,7 @@ import {
   Upload,
   Save,
   LogOut,
+  LayoutDashboard,
 } from "lucide-react";
 import type { TranscriptionResponse } from "@/types/speech";
 import withAuth from "@/components/withAuth";
@@ -20,6 +21,8 @@ import withAuth from "@/components/withAuth";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import Link from "next/link";
+import FormattedTranscript from "@/components/FormattedTranscript";
 
 type RecordingState = "idle" | "recording" | "processing" | "complete";
 
@@ -146,14 +149,50 @@ function DocMate() {
     }
   }, [recordingState, updateStatus]);
 
+  // const transcribeAudio = async (audioData: Blob | File) => {
+  //   try {
+  //     updateStatus("Transcribing with AI...");
+  //     const formData = new FormData();
+  //     formData.append(
+  //       "audio",
+  //       audioData instanceof File ? audioData : new File([audioData], "recording.webm")
+  //     );
+
+  //     formData.append("config", JSON.stringify(transcriptionConfig));
+
+  //     const response = await fetch("/api/transcribe", { method: "POST", body: formData });
+
+  //     if (!response.ok) {
+  //       const errorData = await response.json();
+  //       throw new Error(errorData.error || `HTTP ${response.status}`);
+  //     }
+
+  //     const result: TranscriptionResponse = await response.json();
+  //     setTranscript(result.transcript);
+  //     setRecordingState("complete");
+  //     updateStatus("Transcription complete.");
+  //   } catch (err) {
+  //     console.error("Transcription error:", err);
+  //     setRecordingState("idle");
+  //     updateStatus(
+  //       `Transcription failed: ${err instanceof Error ? err.message : "Unknown error"}`,
+  //       true
+  //     );
+  //   }
+  // };
+
   const transcribeAudio = async (audioData: Blob | File) => {
     try {
       updateStatus("Transcribing with AI...");
       const formData = new FormData();
-      formData.append(
-        "audio",
-        audioData instanceof File ? audioData : new File([audioData], "recording.webm")
-      );
+
+     
+      const audioFile =
+        audioData instanceof File
+          ? audioData
+          : new File([audioData], "recording.webm", { type: "audio/webm" });
+
+      formData.append("audio", audioFile);
 
       formData.append("config", JSON.stringify(transcriptionConfig));
 
@@ -323,13 +362,23 @@ function DocMate() {
 
       <div className='container mx-auto px-4 py-8'>
         <div className='max-w-7xl mx-auto'>
-          <button
-            onClick={logOut}
-            className='absolute top-5 right-5 flex items-center gap-2 rounded-lg bg-red-600/30 px-4 py-2 text-sm font-semibold text-slate-900 transition-colors hover:bg-red-500/80 hover:text-white'
-          >
-            <LogOut className='h-4 w-4' />
-            Logout
-          </button>
+          <div className='flex items-center justify-end mb-5 gap-4'>
+            <Link
+              href='/dashboard'
+              className='flex items-center gap-2 rounded-md bg-slate-700/50 px-4 py-2 text-sm font-semibold text-slate-300 transition-colors hover:bg-blue-600/80 hover:text-white'
+            >
+              <LayoutDashboard className='h-4 w-4' />
+              Dashboard
+            </Link>
+
+            <button
+              onClick={logOut}
+              className='flex items-center gap-2 cursor-pointer rounded-md bg-slate-700/50 px-4 py-2 text-sm font-semibold text-slate-300 transition-colors hover:bg-red-500/80 hover:text-white'
+            >
+              <LogOut className='h-4 w-4' />
+              Logout
+            </button>
+          </div>
 
           {/* --- Header --- */}
           <div className='text-center mb-8'>
@@ -478,9 +527,10 @@ function DocMate() {
               </CardHeader>
               <CardContent>
                 <div className='bg-slate-900/50 rounded-lg p-4 min-h-[400px] max-h-[600px] overflow-y-auto border border-slate-700/50'>
-                  <pre className='whitespace-pre-wrap text-sm font-mono text-slate-200 leading-relaxed'>
+                  {/* <pre className='whitespace-pre-wrap text-sm font-mono text-slate-200 leading-relaxed'>
                     {transcript || "Medical conversation transcript will appear here..."}
-                  </pre>
+                  </pre> */}
+                   <FormattedTranscript transcript={transcript} />
                 </div>
               </CardContent>
             </Card>

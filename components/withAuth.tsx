@@ -3,6 +3,7 @@
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import Loader from "./Loader";
 
 const withAuth = <P extends object>(WrappedComponent: React.ComponentType<P>) => {
   const Wrapper = (props: P) => {
@@ -16,7 +17,7 @@ const withAuth = <P extends object>(WrappedComponent: React.ComponentType<P>) =>
     }, [user, loading, router]);
 
     if (loading || !user) {
-      return <div className='text-center text-4xl font-semibold mt-10'>Loaidng...</div>;
+      return <Loader />;
     }
 
     return <WrappedComponent {...props} />;
